@@ -39,7 +39,7 @@ namespace MoqTipsAndTricks
             var basketMock = new Mock<IBasket>();
             var basketManager = new BasketManagerWithInterface(basketMock.Object);
 
-            basketMock.Setup(basket => basket.AddProduct(new Product()));
+           //basketMock.Setup(basket => basket.AddProduct(new Product()));
             basketManager.AddProduct(new Product());
 
             basketMock.Verify(basket => basket.AddProduct(It.IsAny<Product>()));
