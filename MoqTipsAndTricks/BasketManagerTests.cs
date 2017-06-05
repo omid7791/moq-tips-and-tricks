@@ -8,8 +8,13 @@ namespace MoqTipsAndTricks
 {
     public class BasketManagerTests
     {
+        private const string InterfacesAndBehaviour = "Interfaces & Behaviour";
+        private const string ReturnValues = "Returning Values";
+        private const string Arguments = "Arguments";
+        private const string Exceptions = "Exceptions";
+
         [Fact]
-        [Trait("Category", "1")]
+        [Trait("Category", InterfacesAndBehaviour)]
         public void ShouldThrowAnExceptionIfNonVirtualClassMethodsAndPropertiesUsed()
         {
             var basketMock = new Mock<Basket>();
@@ -22,7 +27,7 @@ namespace MoqTipsAndTricks
         }
 
         [Fact]
-        [Trait("Category", "1")]
+        [Trait("Category", InterfacesAndBehaviour)]
         public void AllMockedByDefault()
         {
             var basketMock = new Mock<IBasket>();
@@ -34,7 +39,7 @@ namespace MoqTipsAndTricks
         }
 
         [Fact]
-        [Trait("Category", "1")]
+        [Trait("Category", InterfacesAndBehaviour)]
         public void StrictSetup()
         {
             var basketMock = new Mock<IBasket>(MockBehavior.Strict);
@@ -47,6 +52,44 @@ namespace MoqTipsAndTricks
             basketMock.Verify(basket => basket.AddProduct(It.IsAny<Product>()));
         }
 
+        [Fact]
+        [Trait("Category", ReturnValues)]
+        public void ShouldReturnCorrectTotalPrice()
+        {
+            var basketMock = new Mock<IBasket>();
+            var basketManager = new BasketManagerWithInterface(basketMock.Object);
+            //basketMock.Setup(basket => basket.GetTotalPrice());
+            basketMock.Setup(basket => basket.GetTotalPrice()).Returns(() => 5);
+            
+            Assert.Equal(7, basketManager.GetTotalPrice());
+        }
+
+        [Fact]
+        [Trait("Category", ReturnValues)]
+        public void ShouldReturnCorrectTotalPriceForIncrementsOfThree()
+        {
+            var basketMock = new Mock<IBasket>();
+            var basketManager = new BasketManagerWithInterface(basketMock.Object);
+
+            var i = 5;
+            basketMock.Setup(basket => basket.GetTotalPrice())
+                .Returns(() => i).Callback(() => i += 3);
+
+            Assert.Equal(7, basketManager.GetTotalPrice());
+            Assert.Equal(10, basketManager.GetTotalPrice());
+            Assert.Equal(13, basketManager.GetTotalPrice());
+        }
+
+        [Fact]
+        [Trait("Category", Arguments)]
+        public void ShouldAddProductToBasketWithRightPrice()
+        {
+            var basketMock = new Mock<IBasket>();
+            var basketManager = new BasketManagerWithInterface(basketMock.Object);
+            basketManager.AddProduct(new Product { Price = 44m });
+            
+            basketMock.Verify(basket => basket.AddProduct(It.Is<Product>(product => product.Price == 44m)));
+        }
     }
 
 
@@ -98,11 +141,22 @@ namespace MoqTipsAndTricks
         {
             _basket.AddProduct(product);
         }
+
+        public decimal GetTotalPrice()
+        {
+            return _basket.GetTotalPrice() + GetVat();
+        }
+
+        private static decimal GetVat()
+        {
+            return 2.00m;
+        }
     }
 
     public interface IBasket
     {
         void AddProduct(Product product);
+        decimal GetTotalPrice();
     }
 
     #endregion
