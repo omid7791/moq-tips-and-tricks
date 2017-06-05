@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using Moq;
 using Xunit;
@@ -9,37 +10,38 @@ namespace MoqTipsAndTricks
     {
         [Fact]
         [Trait("Category", "1")]
-        public void AllMockedByDefault()
+        public void ShouldThrowAnExceptionIfNonVirtualClassMethodsAndPropertiesUsed()
         {
             var basketMock = new Mock<Basket>();
             var basketManager = new BasketManager(basketMock.Object);
 
-            basketManager.AddProduct(It.IsAny<Product>());
+            basketManager.AddProduct(new Product());
 
-            basketMock.Verify(basket => basket.AddProduct(new Product()));
+            //basketMock.Verify(basket => basket.AddProduct(new Product()));
+            Assert.ThrowsAny<Exception>(() => basketMock.Verify(basket => basket.AddProduct(new Product())));
         }
 
-        //[Fact]
-        //[Trait("Category", "1")]
-        //public void AllMockedByDefault()
-        //{
-        //    var basketMock = new Mock<IBasket>();
-        //    var basketManager = new BasketManagerWithInterface(basketMock.Object);
-
-        //    basketMock.Setup(basket => basket.AddProduct(new Product()));
-        //    basketManager.AddProduct(new Product());
-
-        //    basketMock.Verify(basket => basket.AddProduct(It.IsAny<Product>()));
-        //}
-
         [Fact]
-        [Trait("Category", "2")]
-        public void dd()
+        [Trait("Category", "1")]
+        public void AllMockedByDefault()
         {
             var basketMock = new Mock<IBasket>();
             var basketManager = new BasketManagerWithInterface(basketMock.Object);
+            
+            basketManager.AddProduct(new Product());
 
-           //basketMock.Setup(basket => basket.AddProduct(new Product()));
+            basketMock.Verify(basket => basket.AddProduct(It.IsAny<Product>()));
+        }
+
+        [Fact]
+        [Trait("Category", "1")]
+        public void StrictSetup()
+        {
+            var basketMock = new Mock<IBasket>(MockBehavior.Strict);
+            var basketManager = new BasketManagerWithInterface(basketMock.Object);
+            basketMock.Setup(basket => basket.AddProduct(It.IsAny<Product>()));
+            //basketMock.Setup(basket => basket.AddProduct(new Product()));
+
             basketManager.AddProduct(new Product());
 
             basketMock.Verify(basket => basket.AddProduct(It.IsAny<Product>()));
