@@ -12,6 +12,8 @@ namespace MoqTipsAndTricks
         private const string ReturnValues = "Returning Values";
         private const string Arguments = "Arguments";
         private const string Exceptions = "Exceptions";
+        private const string GettersAndSetters = "Getters & Setters";
+        private const string Events = "Events";
 
         [Fact]
         [Trait("Category", InterfacesAndBehaviour)]
@@ -90,6 +92,60 @@ namespace MoqTipsAndTricks
             
             basketMock.Verify(basket => basket.AddProduct(It.Is<Product>(product => product.Price == 44m)));
         }
+
+        [Fact]
+        [Trait("Category", Exceptions)]
+        public void ShouldThrowWhenAddingNullProductToBasket()
+        {
+            var basketMock = new Mock<IBasket>();
+            var basketManager = new Mock<BasketManagerWithInterface>(basketMock.Object);
+
+            basketMock.Setup(basket => basket.AddProduct(It.IsAny<Product>()))
+                .Throws<ArgumentNullException>();
+
+            Assert.Throws<AccessViolationException>(() => basketManager.Object.AddProduct(new Product()));
+        }
+
+        [Fact]
+        [Trait("Category", GettersAndSetters)]
+        public void ShouldSetPrice()
+        {
+            var prod = new Mock<IProduct>();
+            prod.Object.Price = 45m;
+            
+            prod.VerifySet(product => product.Price = It.IsAny<decimal>());
+        }
+
+        [Fact]
+        [Trait("Category", GettersAndSetters)]
+        public void ShouldCallGetPrice()
+        {
+            var prod = new Mock<IProduct>();
+            var basket = new Basket();
+            var basketManager = new BasketManagerWithInterface(basket);
+            prod.Object.Price = 45m;
+
+            basketManager.AddProduct(prod.Object);
+            basketManager.GetTotalPrice();
+            
+            prod.VerifyGet(product => product.Price, Times.Exactly(1));
+        }
+
+        [Fact]
+        [Trait("Category", Events)]
+        public void ShouldCallProductAddedEventHandler()
+        {
+            var prod = new Mock<IProduct>();
+            prod.Object.Price = 5m;
+            var basketMock = new Mock<IBasket>();
+            var basketManager = new Mock<BasketManagerWithInterface>(basketMock.Object);
+
+            var dummy = basketManager.Object; //This line is crucial to call/execute the constructor in order to initialize the event handlerS
+
+            basketMock.Raise(basket => basket.ProductAdded += null, null, new ProductAddedEventArgs(prod.Object));
+            
+            basketManager.Verify(b => b.ProductAdded(It.IsAny<object>(), It.IsAny<ProductAddedEventArgs>()));
+        }
     }
 
 
@@ -109,24 +165,36 @@ namespace MoqTipsAndTricks
         }
     }
 
-    public class Product
+    public interface IProduct
+    {
+        decimal Price { get; set; }
+    }
+
+    public class Product : IProduct
     {
         public decimal Price { get; set; }
     }
 
-    public class Basket
+    public class Basket : IBasket
     {
-        public List<Product> Products { get; set; }
+        public List<IProduct> Products { get; set; }
 
         public Basket()
         {
-            Products = new List<Product>();
+            Products = new List<IProduct>();
         }
 
-        public void AddProduct(Product product)
+        public void AddProduct(IProduct product)
         {
             Products.Add(product);
         }
+
+        public decimal GetTotalPrice()
+        {
+            return Products.Sum(product => product.Price);
+        }
+
+        public event EventHandler<ProductAddedEventArgs> ProductAdded;
     }
     
     public class BasketManagerWithInterface {
@@ -135,11 +203,23 @@ namespace MoqTipsAndTricks
         public BasketManagerWithInterface(IBasket basket)
         {
             _basket = basket;
+            _basket.ProductAdded += ProductAdded;
         }
-        
-        public void AddProduct(Product product)
+
+        public virtual void ProductAdded(object sender, ProductAddedEventArgs e)
         {
-            _basket.AddProduct(product);
+        }
+
+        public void AddProduct(IProduct product)
+        {
+            try
+            {
+                _basket.AddProduct(product);
+            }
+            catch (Exception e)
+            {
+                throw new AccessViolationException(); //any exception will do here
+            }
         }
 
         public decimal GetTotalPrice()
@@ -155,8 +235,19 @@ namespace MoqTipsAndTricks
 
     public interface IBasket
     {
-        void AddProduct(Product product);
+        void AddProduct(IProduct product);
         decimal GetTotalPrice();
+        event EventHandler<ProductAddedEventArgs> ProductAdded;
+    }
+
+    public class ProductAddedEventArgs
+    {
+        private readonly IProduct _product;
+
+        public ProductAddedEventArgs(IProduct product)
+        {
+            _product = product;
+        }
     }
 
     #endregion
